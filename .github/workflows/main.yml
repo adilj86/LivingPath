@@ -1,0 +1,31 @@
+name: Build macOS App
+
+on: [push] # Runs on every push, you can change this to run only on tags
+
+jobs:
+  build:
+    runs-on: macos-latest # This runner has Python and PyInstaller ready to go
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11' # Or your preferred version
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller tqdm
+
+    - name: Build with PyInstaller
+      run: pyinstaller LivingPath.spec --clean
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: LivingPath-macOS
+        path: dist/LivingPath.app
