@@ -11,10 +11,10 @@ jobs:
     runs-on: macos-26
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -40,7 +40,7 @@ jobs:
         run: hdiutil create -volname LivingPath -srcfolder dmg -ov -format UDZO LivingPath-macOS-arm64.dmg
 
       - name: Upload DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: LivingPath-macOS-arm64
           path: LivingPath-macOS-arm64.dmg
