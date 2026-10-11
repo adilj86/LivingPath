@@ -1,0 +1,113 @@
+name: Build LivingPath for macOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - name: Get LivingPath source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r requirements.txt
+          python -m pip install lightgbm
+
+      - name: Build the application
+        run: |
+          python -m PyInstaller --noconfirm --clean LivingPath.spec
+
+      - name: Prepare the DMG
+        run: |
+          test -d "dist/LivingPath.app"
+          mkdir -p dmg
+          cp -R "dist/LivingPath.app" dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create \
+            -volname "LivingPath" \
+            -srcfolder dmg \
+            -ov \
+            -format UDZO \
+            LivingPath-macOS-arm64.dmg
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: LivingPath-macOS-arm64
+          path: LivingPath-macOS-arm64.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+The workflow uses the project's existing LivingPath.spec, which bundles its application resources and defines the macOS app bundle. It also installs lightgbm, which the project's build script identifies as a macOS requirement. 
+GitHub
++1
+
+4. Click Commit changes and confirm the new file in your fork.
+Step 3: Run the build
+
+    Open your fork on GitHub.
+
+    Click the Actions tab.
+
+    If prompted, click I understand my workflows, go ahead and enable them.
+
+    Select Build LivingPath for macOS from the workflows list.
+
+    Click Run workflow, then click the green Run workflow button in the popup.
+
+GitHub will launch a macOS 26 ARM64 runner and execute the build remotely. 
+GitHub Docs
++1
+
+Wait for the run to finish. A green check means all workflow steps passed; a red cross means we need to inspect the failed step.
+Step 4: Download your installer
+
+Once the workflow finishes successfully:
+
+    Open the completed workflow run.
+
+    Scroll to the bottom of the page, to Artifacts.
+
+    Click LivingPath-macOS-arm64.
+
+    Open the downloaded ZIP file on your Mac.
+
+    Inside, you should find LivingPath-macOS-arm64.dmg.
+
+Double-click the DMG, then drag LivingPath into Applications.
+
+Expected result
+
+A native Apple Silicon app packaged in a downloadable DMG, built on GitHub rather than your Mac.
+
+Security note
+
+This build is not signed or notarized by Apple. macOS may warn you when opening it for the first time. The workflow also does not yet test the app's actual GUI launch.
+If the build fails
+
+Don't start changing random settings. We can use the error log to identify the exact dependency or packaging issue.
+
+Common possibilities include:
+
+    A Python dependency that cannot be installed on the selected runner.
+
+    A missing native library or resource.
+
+    A PyInstaller configuration issue.
+
+    A dependency that installs successfully but fails when LivingPath launches.
+
+The current workflow is a first build attempt, not a verified, working release. We should confirm that it produces the app and that the app opens before relying on the DMG.
+
+Your next action: create .github/workflows/build-macos.yml in your fork, commit the workflow, and run it. If it fails, paste the last 30–50 lines of the failed step's log here. I'll help you modify the workflow until we have a working installer.
