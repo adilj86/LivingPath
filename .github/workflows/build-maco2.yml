@@ -1,6 +1,6 @@
 name: Build LivingPath for macOS
 
-"on":
+on:
   workflow_dispatch:
 
 permissions:
@@ -11,10 +11,10 @@ jobs:
     runs-on: macos-26
     steps:
       - name: Checkout source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -22,7 +22,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements.txt
-          python -m pip install pyinstaller lightgbm
+          python -m pip install pyinstaller
 
       - name: Build application
         run: python -m PyInstaller --noconfirm --clean LivingPath.spec
@@ -30,22 +30,22 @@ jobs:
       - name: Check application bundle
         run: test -d "dist/LivingPath.app"
 
+      - name: Sign and verify application
+        run: |
+          codesign --force --sign - dist/LivingPath.app
+          codesign --verify --strict --verbose=2 dist/LivingPath.app
+
       - name: Create DMG staging folder
         run: |
           mkdir -p dmg
           cp -R dist/LivingPath.app dmg/
           ln -s /Applications dmg/Applications
-          
-      - name: Sign and verify application
-        run: |
-          codesign --force --deep --sign - dist/LivingPath.app
-          codesign --verify --deep --strict --verbose=2 dist/LivingPath.app
 
       - name: Create DMG
         run: hdiutil create -volname LivingPath -srcfolder dmg -ov -format UDZO LivingPath-macOS-arm64.dmg
 
       - name: Upload DMG
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: LivingPath-macOS-arm64
           path: LivingPath-macOS-arm64.dmg
