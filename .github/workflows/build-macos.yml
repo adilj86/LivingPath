@@ -35,6 +35,11 @@ jobs:
           mkdir -p dmg
           cp -R dist/LivingPath.app dmg/
           ln -s /Applications dmg/Applications
+          
+      - name: Sign and verify application
+        run: |
+          codesign --force --deep --sign - dist/LivingPath.app
+          codesign --verify --deep --strict --verbose=2 dist/LivingPath.app
 
       - name: Create DMG
         run: hdiutil create -volname LivingPath -srcfolder dmg -ov -format UDZO LivingPath-macOS-arm64.dmg
