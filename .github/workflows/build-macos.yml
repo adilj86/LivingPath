@@ -1,6 +1,3 @@
-yaml
-
-
 name: Build LivingPath for macOS
 
 "on":
