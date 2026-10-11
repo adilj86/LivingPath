@@ -10,16 +10,20 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 a = Analysis(
     ['main.py'],
-    pathex=['.'],
-    binaries=binaries,
-    datas=datas,
-    hiddenimports=hiddenimports,
-    hookspath=['hooks'],
+    pathex=[],
+    binaries=[],
+    datas=[
+        ('plugins', 'plugins'),   # bundle the plugins folder as data
+    ],
+    hiddenimports=[
+        'tqdm',
+        # add any other imports used only inside plugin files
+    ],
+    hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
-    optimize=0,
 )
 pyz = PYZ(a.pure)
 
@@ -39,8 +43,8 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['files/logo.icns'],
 )
+
 coll = COLLECT(
     exe,
     a.binaries,
@@ -50,21 +54,10 @@ coll = COLLECT(
     upx_exclude=[],
     name='LivingPath',
 )
+
 app = BUNDLE(
     coll,
     name='LivingPath.app',
-    icon='files/logo.icns',
-    bundle_identifier=None,
-    version = "1.0.3",
-    info_plist = {
-        'NSPrincipalClass': 'NSApplication',
-        'LSMultipleInstancesProhibited':True,
-        'CFBundleDocumentTypes': [{
-              'CFBundleTypeName': 'LivingPath File',
-              'CFBundleTypeIconFile': 'files/logo.icns',
-              'LSItemContentTypes': ['public.lvp'],
-              'CFBundleTypeRole': 'Editor',
-              'LSHandlerRank': 'Owner'
-        }]
-    }
+    icon=None,
+    bundle_identifier='com.yourname.livingpath',
 )
