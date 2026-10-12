@@ -1,0 +1,92 @@
+
+name: Build LivingPath for macOSv9
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "setuptools<71" wheel
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Build LivingPath
+        run: |
+          python -m PyInstaller --noconfirm --clean LivingPath.spec
+          test -d "dist/LivingPath.app"
+
+      - name: Verify tqdm is bundled
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP="dist/LivingPath.app"
+
+          echo "Searching for tqdm in the built app..."
+
+          # PyInstaller may bundle tqdm as Python modules, package
+          # directories, or compiled bytecode inside the application.
+          if find "$APP" \( \
+              -iname 'tqdm' -o \
+              -iname 'tqdm.py' -o \
+              -iname 'tqdm-*.dist-info' -o \
+              -iname 'tqdm-*.egg-info' \
+            \) -print | grep -q .; then
+            echo "SUCCESS: Found tqdm-related files in the app bundle."
+            find "$APP" \( \
+                -iname 'tqdm' -o \
+                -iname 'tqdm.py' -o \
+                -iname 'tqdm-*.dist-info' -o \
+                -iname 'tqdm-*.egg-info' \
+              \) -print
+          else
+            echo "ERROR: No recognizable tqdm files found in $APP"
+            echo "PyInstaller analysis report:"
+            find build -name 'warn-*.txt' -print -exec \
+              grep -in 'tqdm' {} \; || true
+            exit 1
+          fi
+
+      - name: Create DMG
+        run: |
+          set -euo pipefail
+
+          mkdir -p staging
+          ditto "dist/LivingPath.app" "staging/LivingPath.app"
+          ln -s /Applications "staging/Applications"
+
+          hdiutil create \
+            -volname "LivingPath" \
+            -srcfolder staging \
+            -ov \
+            -format UDZO \
+            LivingPath-macOS-arm64.dmg
+
+          test -s LivingPath-macOS-arm64.dmg
+          hdiutil verify LivingPath-macOS-arm64.dmg
+          ls -lh LivingPath-macOS-arm64.dmg
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v7
+        with:
+          name: LivingPath-macOS-arm64
+          path: LivingPath-macOS-arm64.dmg
+          if-no-files-found: error
+          retention-days: 14
