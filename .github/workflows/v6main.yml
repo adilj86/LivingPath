@@ -1,0 +1,64 @@
+name: Build LivingPath for macOS-v6
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "setuptools<71" wheel
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Build application
+        run: python -m PyInstaller --noconfirm --clean LivingPath.spec
+
+      - name: Check application bundle
+        run: test -d "dist/LivingPath.app"
+
+      - name: Verify tqdm is bundled
+        run: |
+          find dist/LivingPath.app -name "tqdm*" -o -name "tqdm" -type d | head -20
+          python -c "import zipfile, sys; sys.exit(0)"
+          # Fail loudly if tqdm is missing from the bundle
+          if ! find dist/LivingPath.app -path "*tqdm*" | grep -q .; then
+            echo "ERROR: tqdm was not bundled into the app"
+            exit 1
+          fi
+
+      - name: Sign and verify application
+        run: |
+          codesign --force --sign - dist/LivingPath.app
+          codesign --verify --strict --verbose=2 dist/LivingPath.app
+
+      - name: Create DMG staging folder
+        run: |
+          mkdir -p dmg
+          cp -R dist/LivingPath.app dmg/
+          ln -s /Applications dmg/Applications
+
+      - name: Create DMG
+        run: hdiutil create -volname LivingPath -srcfolder dmg -ov -format UDZO LivingPath-macOS-arm64.dmg
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v7
+        with:
+          name: LivingPath-macOS-arm64
+          path: LivingPath-macOS-arm64.dmg
+          if-no-files-found: error
+          retention-days: 14
