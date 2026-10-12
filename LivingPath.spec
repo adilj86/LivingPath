@@ -3,10 +3,14 @@ from PyInstaller.utils.hooks import collect_all
 
 datas = [('files', 'files')]
 binaries = []
-hiddenimports = ['tqdm']
+hiddenimports = ['tqdm', 'lightgbm']
 tmp_ret = collect_all('hyperglot')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
+from PyInstaller.utils.hooks import collect_dynamic_libs
+
+# Collect LightGBM's compiled libraries
+binaries += collect_dynamic_libs('lightgbm')
 
 a = Analysis(
     ['main.py'],
@@ -16,10 +20,7 @@ a = Analysis(
         ('files', 'files'),
         ('plugins', 'plugins'),   # bundle the plugins folder as data
     ],
-    hiddenimports=[
-        'tqdm',
-        # add any other imports used only inside plugin files
-    ],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
