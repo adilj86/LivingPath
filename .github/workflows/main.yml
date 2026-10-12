@@ -1,31 +1,97 @@
-name: Build macOS App
 
-on: [push] # Runs on every push, you can change this to run only on tags
+name: Build LivingPath for macOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: macos-latest # This runner has Python and PyInstaller ready to go
+    runs-on: macos-26
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v7
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11' # Or your preferred version
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller tqdm
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "setuptools<71" wheel
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
 
-    - name: Build with PyInstaller
-      run: pyinstaller LivingPath.spec --clean
+      - name: Build with PyInstaller
+        run: |
+          python -m PyInstaller --noconfirm --clean LivingPath.spec
+          test -d "dist/LivingPath.app"
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: LivingPath-macOS
-        path: dist/LivingPath.app
+      - name: Verify tqdm is bundled
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Searching for tqdm in the app bundle..."
+
+          if find "dist/LivingPath.app" \( \
+            -iname 'tqdm' -o \
+            -iname 'tqdm.py' -o \
+            -iname 'tqdm-*.dist-info' -o \
+            -iname 'tqdm-*.egg-info' \
+          \) -print | grep -q .; then
+            echo "SUCCESS: tqdm files found."
+            find "dist/LivingPath.app" \( \
+              -iname 'tqdm' -o \
+              -iname 'tqdm.py' -o \
+              -iname 'tqdm-*.dist-info' -o \
+              -iname 'tqdm-*.egg-info' \
+            \) -print
+          else
+            echo "ERROR: tqdm is missing from the bundle."
+            find build -name 'warn-*.txt' -print -exec \
+              grep -in 'tqdm' {} \; || true
+            exit 1
+          fi
+
+      - name: Create DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP="dist/LivingPath.app"
+          STAGING="$RUNNER_TEMP/LivingPath-dmg"
+          DMG="$GITHUB_WORKSPACE/LivingPath-macOS-arm64.dmg"
+
+          test -d "$APP"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING"
+
+          ditto "$APP" "$STAGING/LivingPath.app"
+          ln -s /Applications "$STAGING/Applications"
+
+          hdiutil create \
+            -volname "LivingPath" \
+            -srcfolder "$STAGING" \
+            -ov \
+            -format UDZO \
+            "$DMG"
+
+          test -s "$DMG"
+          hdiutil verify "$DMG"
+
+          echo "DMG created successfully:"
+          ls -lh "$DMG"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LivingPath-macOS-arm64-dmg
+          path: LivingPath-macOS-arm64.dmg
+          if-no-files-found: error
+          retention-days: 14
