@@ -3,11 +3,17 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 datas = [('files', 'files'), ('plugins', 'plugins')]
 binaries = []
-hiddenimports = ['tqdm', 'lightgbm']
+hiddenimports = ['lightgbm']
 tmp_ret = collect_all('hyperglot')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
-hiddenimports += collect_submodules('tqdm')
+hiddenimports = ['lightgbm']
+
+# Collect tqdm's modules and any associated package files.
+tqdm_datas, tqdm_binaries, tqdm_hiddenimports = collect_all('tqdm')
+datas += tqdm_datas
+binaries += tqdm_binaries
+hiddenimports += tqdm_hiddenimports
 
 from PyInstaller.utils.hooks import collect_dynamic_libs
 
