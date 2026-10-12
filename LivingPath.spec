@@ -13,6 +13,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
+        ('files', 'files'),
         ('plugins', 'plugins'),   # bundle the plugins folder as data
     ],
     hiddenimports=[
