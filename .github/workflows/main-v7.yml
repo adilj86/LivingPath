@@ -1,4 +1,4 @@
-name: Build LivingPath for macOS
+name: Build LivingPath for macOS-7
 
 on:
   workflow_dispatch:
@@ -20,7 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip
+          python -m pip install "setuptools<71" wheel
           python -m pip install -r requirements.txt
           python -m pip install pyinstaller
 
@@ -29,6 +30,16 @@ jobs:
 
       - name: Check application bundle
         run: test -d "dist/LivingPath.app"
+
+      - name: Verify tqdm is bundled
+        run: |
+          find dist/LivingPath.app -name "tqdm*" -o -name "tqdm" -type d | head -20
+          python -c "import zipfile, sys; sys.exit(0)"
+          # Fail loudly if tqdm is missing from the bundle
+          if ! find dist/LivingPath.app -path "*tqdm*" | grep -q .; then
+            echo "ERROR: tqdm was not bundled into the app"
+            exit 1
+          fi
 
       - name: Sign and verify application
         run: |
